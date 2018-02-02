@@ -1,0 +1,3 @@
+﻿$VirtualMachine = Get-AzureRmVM -ResourceGroupName "resr" -Name "myVM"
+Remove-AzureRmVMDataDisk -VM $VirtualMachine -Name "myVM_OsDisk_1_16665434b13d40d0860db6932fc6dfed"
+Update-AzureRmVM -ResourceGroupName "resr" -VM $VirtualMachine

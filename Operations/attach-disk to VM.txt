@@ -1,0 +1,11 @@
+﻿$rgName = "resr"
+$vmName = "vm2"
+$location = "East US" 
+$dataDiskName = "snap2disk"
+$disk = Get-AzureRmDisk -ResourceGroupName $rgName -DiskName $dataDiskName -Verbose
+
+$vm = Get-AzureRmVM -Name $vmName -ResourceGroupName $rgName -Verbose
+
+$vm = Add-AzureRmVMDataDisk -CreateOption Attach -VM $vm -ManagedDiskId $disk.Id -Verbose
+
+Update-AzureRmVM -VM $vm -ResourceGroupName $rgName -Verbose

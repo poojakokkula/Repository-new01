@@ -1,0 +1,399 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"Unique_Name": {
+			"type": "String"
+		},
+		"vNet_Name": {
+			"type": "String"
+		},
+		"vNet_AddressSpace": {
+			"type": "String"
+		},
+		"vNet_Subnet_Name": {
+			"type": "String"
+		},
+		"vNet_Subnet_AddressSpace": {
+			"type": "String"
+		},
+		"diag_StorageAccount_Name": {
+			"type": "String"
+		},
+		"disk_StorageAccount_Name": {
+			"type": "String"
+		},
+		"VM_Name": {
+			"type": "String"
+		},
+		"VM_Size": {
+			"type": "String"
+		},
+		"VM_Admin_Username": {
+			"type": "String"
+		},
+		"VM_Admin_Password": {
+			"type": "String"
+		},
+		"AvailabilitySet_Name": {
+			"type": "String"
+		},
+		"NIC_Name": {
+			"type": "String"
+		},
+		"NSG_Name": {
+			"type": "String"
+		},
+		"PublicIPAddress_Name": {
+			"type": "String"
+		}
+		//"SqlServer_Name": {
+		//	"type": "String"
+		//},
+		//"SqlServer_Admin_Username": {
+		//	"type": "String"
+		//},
+		//"Sqlserver_Admin_Password": {
+		//	"type": "String"
+		//},
+		//"Sql_FWRules": {
+		//	"type": "String"
+		//},
+		//"SqlDatabase_Name": {
+		//	"type": "String"
+		//},
+		//"RecoveryVaults_Name": {
+		//	"type": "String"
+		//}
+	},
+	"variables": {
+	
+		"v_vNet_Name": "[concat(parameters('Unique_Name'),'-',parameters('vNet_Name'))]",
+		"v_vNet_Subnet_Name": "[concat(parameters('Unique_Name'),'-',parameters('vNet_Subnet_Name'))]",
+		"v_PublicIPAddress_Name": "[concat(parameters('Unique_Name'),'-',parameters('PublicIPAddress_Name'))]",
+		"v_NSG_Name": "[concat(parameters('Unique_Name'),'-',parameters('NSG_Name'))]",
+		"v_NIC_Name": "[concat(parameters('Unique_Name'),'-',parameters('NIC_Name'))]",
+		"v_diag_StorageAccount_Name": "[concat(parameters('Unique_Name'),parameters('diag_StorageAccount_Name'))]",
+		"v_disk_StorageAccount_Name": "[concat(parameters('Unique_Name'),parameters('disk_StorageAccount_Name'))]",
+		"v_AvailabilitySet_Name": "[concat(parameters('Unique_Name'),'-',parameters('AvailabilitySet_Name'))]",
+		"v_VM_Name": "[concat(parameters('Unique_Name'),'-',parameters('VM_Name'))]",
+		"v_VM_Size": "[concat(parameters('Unique_Name'),'-',parameters('VM_Size'))]",
+		"v_VM_Admin_Username": "[concat(parameters('Unique_Name'),parameters('VM_Admin_Username'))]"
+		
+	},
+	"resources": [
+		{
+			"type": "Microsoft.Network/virtualNetworks",
+			"name": "[variables('v_vNet_Name')]",
+			"apiVersion": "2016-03-30",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"addressSpace": {
+					"addressPrefixes": [
+						"[parameters('vNet_AddressSpace')]"
+					]
+				},
+				"subnets": [
+					{
+						"name": "[variables('v_vNet_Subnet_Name')]",
+						"properties": {
+							"addressPrefix": "[parameters('vNet_Subnet_AddressSpace')]"
+						}
+					}
+				]
+			},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Network/publicIPAddresses",
+			"name": "[variables('v_PublicIPAddress_Name')]",
+			"apiVersion": "2016-03-30",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"publicIPAllocationMethod": "Static",
+				"idleTimeoutInMinutes": 4
+			},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('v_NSG_Name')]",
+			"apiVersion": "2016-03-30",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "RDP",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "Internet",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1001,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "HTTP",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "80",
+							"sourceAddressPrefix": "Internet",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1021,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "HTTPS",
+						"properties": {
+							"protocol": "TCP",
+							"sourcePortRange": "*",
+							"destinationPortRange": "443",
+							"sourceAddressPrefix": "Internet",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 1011,
+							"direction": "Inbound"
+						}
+					}
+				]
+			},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('v_NIC_Name')]",
+			"apiVersion": "2016-03-30",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('v_PublicIPAddress_Name'))]"
+							},
+							"subnet": {
+								"id": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('v_vNet_Name')),'/subnets/',variables('v_vNet_Subnet_Name'))]"
+							}
+						}
+					}
+				],
+				"dnsSettings": {
+					"dnsServers": []
+				},
+				"enableIPForwarding": false,
+				"networkSecurityGroup": {
+					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('v_NSG_Name'))]"
+				}
+			},
+			"resources": [],
+			"dependsOn": [
+				"[resourceId('Microsoft.Network/publicIPAddresses', variables('v_PublicIPAddress_Name'))]",
+				"[resourceId('Microsoft.Network/virtualNetworks', variables('v_vNet_Name'))]",
+				"[resourceId('Microsoft.Network/networkSecurityGroups', variables('v_NSG_Name'))]"
+			]
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"sku": {
+				"name": "Standard_LRS",
+				"tier": "Standard"
+			},
+			"kind": "Storage",
+			"name": "[variables('v_diag_StorageAccount_Name')]",
+			"apiVersion": "2016-01-01",
+			"location": "[resourceGroup().location]",
+			"tags": {},
+			"properties": {},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"sku": {
+				"name": "Standard_GRS",
+				"tier": "Standard"
+			},
+			"kind": "Storage",
+			"name": "[variables('v_disk_StorageAccount_Name')]",
+			"apiVersion": "2016-01-01",
+			"location": "[resourceGroup().location]",
+			"tags": {},
+			"properties": {},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Compute/availabilitySets",
+			"name": "[variables('v_AvailabilitySet_Name')]",
+			"apiVersion": "2015-06-15",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"platformUpdateDomainCount": 5,
+				"platformFaultDomainCount": 3
+			},
+			"resources": [],
+			"dependsOn": []
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines",
+			"name": "[variables('v_VM_Name')]",
+			"apiVersion": "2015-06-15",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"availabilitySet": {
+					"id": "[resourceId('Microsoft.Compute/availabilitySets', variables('v_AvailabilitySet_Name'))]"
+				},
+				"hardwareProfile": {
+					"vmSize": "[parameters('VM_Size')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "MicrosoftWindowsServer",
+						"offer": "WindowsServer",
+						"sku": "2012-R2-Datacenter",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "[variables('v_disk_StorageAccount_Name')]",
+						"createOption": "FromImage",
+						"vhd": {
+							"uri": "[concat('https', '://', variables('v_disk_StorageAccount_Name'), '.blob.core.windows.net', concat('/vhds/', variables('v_VM_Name'),'.vhd'))]"
+						},
+						"caching": "ReadWrite"
+					},
+					"dataDisks": []
+				},
+				"osProfile": {
+					"computerName": "[variables('v_VM_Name')]",
+					"adminUsername": "[variables('v_VM_Admin_Username')]",
+					"windowsConfiguration": {
+						"provisionVMAgent": true,
+						"enableAutomaticUpdates": true
+					},
+					"secrets": [],
+					"adminPassword": "parameters('VM_Admin_Password')"
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces', variables('v_NIC_Name'))]"
+						}
+					]
+				}
+			},
+			"resources": [],
+			"dependsOn": [
+				"[resourceId('Microsoft.Compute/availabilitySets', variables('v_AvailabilitySet_Name'))]",
+				"[resourceId('Microsoft.Storage/storageAccounts', variables('v_disk_StorageAccount_Name'))]",
+				"[resourceId('Microsoft.Network/networkInterfaces', variables('v_NIC_Name'))]"
+			]
+		},
+		
+		//{
+		//	"type": "Microsoft.Compute/virtualMachines/extensions",
+		//	"name": "[concat(variables('v_VM_Name'),'/','Antimalware')]",
+		//	"apiVersion": "2015-05-01-preview",
+		//	"location": "[resourceGroup().location]",
+		//	"properties": {
+		//		"publisher": "Microsoft.Azure.Security",
+		//		"type": "IaaSAntimalware",
+		//		"typeHandlerVersion": "1.1",
+		//		"settings": {
+		//			"AntimalwareEnabled": "true",
+		//			"RealtimeProtectionEnabled": "true",
+		//			"ScheduledScanSettings": {
+		//				"isEnabled": "true",
+		//				"scanType": "Quick",
+		//				"day": "7",
+		//				"time": "120"
+		//			}
+		//		},
+		//		"protectedSettings": null
+		//	},
+		//	"dependsOn": [
+		//		"[concat('Microsoft.Compute/virtualMachines/', variables('v_VM_Name'))]"
+		//	]
+		//},
+		//{
+		//	"type": "Microsoft.Sql/servers",
+		//	"kind": "v12.0",
+		//	"name": "[variables('v_SqlServer_Name')]",
+		//	"apiVersion": "2014-04-01-preview",
+		//	"location": "[resourceGroup().location]",
+		//	"properties": {
+		//		"administratorLogin": "[variables('v_SqlServer_Admin_Username')]",
+		//		"administratorLoginPassword": "[parameters('Sqlserver_Admin_Password')]",
+		//		"version": "12.0"
+		//	},
+		//	"resources": [
+		//		{
+		//			"type": "databases",
+		//			"name": "[variables('v_SqlDatabase_Name')]",
+		//			"location": "[resourceGroup().location]",
+		//			"tags": {},
+		//			"apiVersion": "2014-04-01-preview",
+		//			"dependsOn": [
+		//				"[concat('Microsoft.Sql/servers/', variables('v_SqlServer_Name'))]"
+		//			],
+		//			"properties": {
+		//				"edition": "Basic",
+		//				"collation": "SQL_Latin1_General_CP1_CI_AS",
+		//				"maxSizeBytes": "2147483648",
+		//				"requestedServiceObjectiveName": "Basic"
+		//			}
+		//		},
+		//		{
+		//			"type": "firewallrules",
+		//			"name": "AllowAllWindowsAzureIps",
+		//			"apiVersion": "2014-04-01-preview",
+		//			"location": "[resourceGroup().location]",
+		//			"dependsOn": [
+		//				"[concat('Microsoft.Sql/servers/', variables('v_SqlServer_Name'))]"
+		//			],
+		//			"properties": {
+		//				"endIpAddress": "0.0.0.0",
+		//				"startIpAddress": "0.0.0.0"
+		//			}
+		//		},
+		//		{
+		//			"type": "firewallrules",
+		//			"name": "Allow_From_vNET",
+		//			"apiVersion": "2014-04-01-preview",
+		//			"location": "[resourceGroup().location]",
+		//			"dependsOn": [
+		//				"[concat('Microsoft.Sql/servers/', variables('v_SqlServer_Name'))]"
+		//			],
+		//			"properties": {
+		//				"endIpAddress": "192.168.1.4",
+		//				"startIpAddress": "192.168.1.4"
+		//			}
+		//		}
+		//	],
+		//	"dependsOn": []
+		//},
+		//{
+		//	"type": "Microsoft.RecoveryServices/vaults",
+		//	"sku": {
+		//		"name": "RS0",
+		//		"tier": "Standard"
+		//	},
+		//	"name": "[variables('v_RecoveryVaults_Name')]",
+		//	"apiVersion": "2016-06-01",
+		//	"location": "[resourceGroup().location]",
+		//	"properties": {},
+		//	"resources": [],
+		//	"dependsOn": []
+		//}
+	]
+}

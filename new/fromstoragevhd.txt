@@ -1,0 +1,44 @@
+$rgName = "destresg"
+    $location = "eastus"
+
+    ## Storage
+    $storageName = "storagefinal03"
+    $storageType = "Standard_GRS"
+
+    ## Network
+    $nicname = "destnic"
+    $subnet1Name = "dest_subnet1"
+    $vnetName = "dest_vnet"
+    $vnetAddressPrefix = "10.10.0.0/16"
+    $vnetSubnetAddressPrefix = "10.10.0.0/24"
+
+    ## Compute
+    $vmName = "dest_vm"
+    $computerName = "dest_computer"
+    $vmSize = "Standard_DS1"
+    $osDiskName = $vmName + "osDisk"
+
+# Resource Group
+New-AzureRmResourceGroup -Name $rgName -Location $location
+
+# Storage
+$storageacc = New-AzureRmStorageAccount -ResourceGroupName $rgName -Name $storageName -Type $storageType -Location $location
+
+# Network
+$pip = New-AzureRmPublicIpAddress -Name $nicname -ResourceGroupName $rgName -Location $location -AllocationMethod Dynamic
+$subnetconfig = New-AzureRmVirtualNetworkSubnetConfig -Name $subnet1Name -AddressPrefix $vnetSubnetAddressPrefix
+$vnet = New-AzureRmVirtualNetwork -Name $vnetName -ResourceGroupName $rgName -Location $location -AddressPrefix $vnetAddressPrefix -Subnet $subnetconfig
+$nic = New-AzureRmNetworkInterface -Name $nicname -ResourceGroupName $rgName -Location $location -SubnetId $vnet.Subnets[0].Id -PublicIpAddressId $pip.Id
+
+# Compute
+
+    ## Setup local VM object
+    $vm = New-AzureRmVMConfig -VMName $vmName -VMSize $vmSize
+
+    $vm = Add-AzureRmVMNetworkInterface -VM $vm -Id $nic.Id
+    # uri of the destination storageaccount 
+    $osDiskUri = "https://storagecopy02.blob.core.windows.net/copyvhd/vm0120171110114219.vhd"
+    $vm = Set-AzureRmVMOSDisk -VM $vm -Name $osDiskName -VhdUri $osDiskUri -CreateOption attach -Windows
+
+    ## Create the VM in Azure
+    New-AzureRmVM -ResourceGroupName $rgName -Location $location -VM $vm 

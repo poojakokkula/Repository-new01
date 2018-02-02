@@ -1,0 +1,10 @@
+﻿#Resource Group name
+$rgName = "resrGp"
+#VM name
+$vmName = "vm"
+#Stopping the VM
+Stop-AzureRmVM -ResourceGroupName $rgName -Name $vmName -Force
+#Converting Unmanaged VM to Managed VM
+ConvertTo-AzureRmVMManagedDisk -ResourceGroupName $rgName -VMName $vmName
+#Starting the VM
+Start-AzureRmVM -ResourceGroupName $rgName -Name $vmName

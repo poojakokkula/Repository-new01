@@ -1,0 +1,17 @@
+﻿$ResourceGroupName="resrGp"
+$SnapshotName="snapshot1"
+$sasExpiryDuration="3600"
+$storageAccountName="resrgpdiag904"
+$storageAccountKey="c3eeIXsS++7nKbEl6XKL2Bn2yQytore2EtT655QRitsUDcduyiJ45/fkzY5rizV4PMYn9BaCVoJiJ8LMimOrCg=="
+$storageContainerName="snapshotconatiner"
+$destinationVHDFileName="mysnap.vhd"
+$sas = Grant-AzureRmSnapshotAccess -ResourceGroupName $ResourceGroupName -SnapshotName $SnapshotName  -DurationInSecond $sasExpiryDuration -Access Read 
+ 
+#Create the context for the storage account which will be used to copy snapshot to the storage account 
+$storageAccountKey = Get-AzureRmStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
+$context = New-AzureStorageContext -StorageAccountName $StorageAccountName -StorageAccountKey $storageAccountKey[0].Value 
+ 
+
+#Copy the snapshot to the storage account 
+Start-AzureStorageBlobCopy -AbsoluteUri $sas.AccessSAS -DestContainer $storageContainerName -DestContext $context -DestBlob $destinationVHDFileName
+

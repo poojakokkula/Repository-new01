@@ -1,0 +1,127 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2015-06-15",
+      "name": "poounmanaged36364",
+      "location": "East US",
+      "properties": {
+      "accountType": "Standard_LRS"
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2015-06-15",
+      "name": "pooManagedVM-ip",
+      "location": "East US",
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": {
+          "domainNameLabel": "pooja3312"
+        }
+      }
+    },
+    
+	{
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2015-06-15",
+      "name": "PooManagedVm-vnet",
+      "location": "East US",
+      "dependsOn": [],
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.2.0/24"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "default",
+            "properties": {
+              "addressPrefix": "10.0.2.0/24"
+            }
+          }
+        ],
+        "dhcpOptions": {
+          "dnsServers": []
+        }
+      }
+    },
+	
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "apiVersion": "2015-06-15",
+      "name": "avail01",
+      "location": "East US"
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2015-06-15",
+      "name": "vmunmanaged-nic",
+      "location": "East US",
+	  "dependsOn": [
+        "[concat(resourceGroup().id, '/providers/Microsoft.Network/virtualNetworks/PooManagedVm-vnet')]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[concat(resourceGroup().id,'/providers/Microsoft.Network/virtualNetworks/PooManagedVm-vnet/subnets/default')]"
+              }
+            }
+          }
+        ],
+        "enableIPForwarding": false
+      }
+    },
+    
+	{
+      "resources": [],
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2015-06-15",
+      "name": "vmunmanaged",
+      "location": "East US",
+      "dependsOn": [
+        "[concat(resourceGroup().id, '/providers/Microsoft.Network/networkInterfaces/vmunmanaged-nic')]",
+        "[concat(resourceGroup().id, '/providers/Microsoft.Compute/availabilitySets/avail01')]",
+        "[concat(resourceGroup().id, '/providers/Microsoft.Storage/storageAccounts/poounmanaged36364')]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_DS1_v2"
+        },
+        "availabilitySet": {
+          "id": "[concat(resourceGroup().id, '/providers/Microsoft.Compute/availabilitySets/avail01')]"
+        },
+        "storageProfile": {
+          "osDisk": {
+            "name": "vmdisk",
+            "osType": "Windows",
+            "vhd": {
+              "uri": "https://poomanagedvmdiag123.blob.core.windows.net/poosnapshotcontainer/mysnap.vhd"
+            },
+            "caching": "ReadWrite",
+            "createOption": "Attach"
+          },
+          "dataDisks": []
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[concat(resourceGroup().id, '/providers/Microsoft.Network/networkInterfaces/vmunmanaged-nic')]",
+              "properties": {
+                "primary": true
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

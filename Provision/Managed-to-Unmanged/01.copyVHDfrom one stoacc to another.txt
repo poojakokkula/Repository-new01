@@ -1,0 +1,18 @@
+#Storage Account 1
+$storageacc_name1="resrgpdisks"
+#Storage Account 2
+$storageacc_name2="storageacct90"
+#Source Storage Account Key
+$sourcekey="FwfnH+27XG1p53W7pdRyx4g7qA+GuAk5zG6r2cZgz0mNgC64aOjZDDlOlaiviplQ7ipTtopJT0O/vW3f6SGJyA=="
+#Destination Storage Account Key
+$dest="OOS1dVk8diUf0l1RdtNems6s93NC5xOwhc1ZpLvA8/9mn+rx0E3Fl+0/boRIHB/NJGfpJweZfJYaFTfPsiMF0w=="
+#Source context
+$sourceContext = New-AzureStorageContext -StorageAccountName $storageacc_name1 -StorageAccountKey $sourcekey
+#Destination context
+$destinationContext = New-AzureStorageContext –StorageAccountName $storageacc_name2 -StorageAccountKey $dest
+$destcontainer="conatiner1345"
+#Copying the vhd file from one storage to other storage
+$blobCopy = Start-AzureStorageBlobCopy -DestContainer $destcontainer -DestContext $destinationContext -SrcBlob "VM20171113105457.vhd"  -Context   $sourceContext -SrcContainer "vhds"
+#Checking the status of copy
+($blobCopy | Get-AzureStorageBlobCopyState).Status
+
