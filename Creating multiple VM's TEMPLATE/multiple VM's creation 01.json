@@ -1,0 +1,285 @@
+"resources": [
+  { 
+    "apiVersion": "2016-04-30-preview", 
+    "type": "Microsoft.Compute/virtualMachines", 
+    "name": "[concat('myVM', copyindex())]", 
+    "location": "[resourceGroup().location]",
+    "copy": {
+      "name": "virtualMachineLoop", 
+      "count": "[parameters('numberOfInstances')]"
+    },
+    "dependsOn": [
+      "[concat('Microsoft.Network/networkInterfaces/myNIC', copyindex())]" 
+    ], 
+    "properties": { 
+      "hardwareProfile": { 
+        "vmSize": "Standard_DS1" 
+      }, 
+      "osProfile": { 
+        "computername": "[concat('myVM', copyindex())]", 
+        "adminUsername": "[parameters('adminUsername')]", 
+        "adminPassword": "[parameters('adminPassword')]" 
+      }, 
+      "storageProfile": { 
+        "imageReference": { 
+          "publisher": "MicrosoftWindowsServer", 
+          "offer": "WindowsServer", 
+          "sku": "2012-R2-Datacenter", 
+          "version": "latest" 
+        }, 
+        "osDisk": { 
+          "name": "[concat('myOSDisk', copyindex())]",
+          "caching": "ReadWrite", 
+          "createOption": "FromImage" 
+        },
+        "dataDisks": [
+          {
+            "name": "[concat('myDataDisk', copyindex())]",
+            "diskSizeGB": "100",
+            "lun": 0,
+            "createOption": "Empty"
+          }
+        ] 
+      }, 
+      "networkProfile": { 
+        "networkInterfaces": [ 
+          { 
+            "id": "[resourceId('Microsoft.Network/networkInterfaces',
+              concat('myNIC', copyindex()))]" 
+          } 
+        ] 
+      },
+      "diagnosticsProfile": {
+        "bootDiagnostics": {
+          "enabled": "true",
+          "storageUri": "[concat('https://', variables('storageName'), '.blob.core.windows.net')]"
+        }
+      } 
+    },
+    "resources": [ 
+      { 
+        "name": "Microsoft.Insights.VMDiagnosticsSettings", 
+        "type": "extensions", 
+        "location": "[resourceGroup().location]", 
+        "apiVersion": "2016-03-30", 
+        "dependsOn": [ 
+          "[concat('Microsoft.Compute/virtualMachines/myVM', copyindex())]" 
+        ], 
+        "properties": { 
+          "publisher": "Microsoft.Azure.Diagnostics", 
+          "type": "IaaSDiagnostics", 
+          "typeHandlerVersion": "1.5", 
+          "autoUpgradeMinorVersion": true, 
+          "settings": { 
+            "xmlCfg": "[base64(concat(variables('wadcfgxstart'), 
+            variables('wadmetricsresourceid'), 
+            concat('myVM', copyindex()),
+            variables('wadcfgxend')))]", 
+            "storageAccount": "[variables('storageName')]" 
+          }, 
+          "protectedSettings": { 
+            "storageAccountName": "[variables('storageName')]", 
+            "storageAccountKey": "[listkeys(variables('accountid'), 
+              '2015-06-15').key1]", 
+            "storageAccountEndPoint": "https://core.windows.net" 
+          } 
+        } 
+      },
+      {
+        "name": "MyCustomScriptExtension",
+        "type": "extensions",
+        "apiVersion": "2016-03-30",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[concat('Microsoft.Compute/virtualMachines/myVM', copyindex())]"
+        ],
+        "properties": {
+          "publisher": "Microsoft.Compute",
+          "type": "CustomScriptExtension",
+          "typeHandlerVersion": "1.7",
+          "autoUpgradeMinorVersion": true,
+          "settings": {
+            "fileUris": [
+              "[concat('https://', variables('storageName'),
+                '.blob.core.windows.net/customscripts/start.ps1')]" 
+            ],
+            "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File start.ps1"
+          }
+        }
+      } 
+    ]
+  } 
+]
+
+
+
+"apiVersion": "2016-04-30-preview",
+
+"parameters": {
+  "adminUsername": { "type": "string" },
+  "adminPassword": { "type": "securestring" },
+  "numberOfInstances": { "type": "int" }
+},
+
+"variables": { 
+  "storageName": "mystore1",
+  "accountid": "[concat('/subscriptions/', subscription().subscriptionId, 
+    '/resourceGroups/', resourceGroup().name,
+  '/providers/','Microsoft.Storage/storageAccounts/', variables('storageName'))]", 
+  "wadlogs": "<WadCfg> 
+    <DiagnosticMonitorConfiguration overallQuotaInMB=\"4096\" xmlns=\"http://schemas.microsoft.com/ServiceHosting/2010/10/DiagnosticsConfiguration\"> 
+      <DiagnosticInfrastructureLogs scheduledTransferLogLevelFilter=\"Error\"/> 
+      <WindowsEventLog scheduledTransferPeriod=\"PT1M\" > 
+        <DataSource name=\"Application!*[System[(Level = 1 or Level = 2)]]\" /> 
+        <DataSource name=\"Security!*[System[(Level = 1 or Level = 2)]]\" /> 
+        <DataSource name=\"System!*[System[(Level = 1 or Level = 2)]]\" />
+      </WindowsEventLog>", 
+  "wadperfcounters": "<PerformanceCounters scheduledTransferPeriod=\"PT1M\">
+      <PerformanceCounterConfiguration counterSpecifier=\"\\Process(_Total)\\Thread Count\" sampleRate=\"PT15S\" unit=\"Count\">
+        <annotation displayName=\"Threads\" locale=\"en-us\"/>
+      </PerformanceCounterConfiguration>
+    </PerformanceCounters>", 
+  "wadcfgxstart": "[concat(variables('wadlogs'), variables('wadperfcounters'), 
+    '<Metrics resourceId=\"')]", 
+  "wadmetricsresourceid": "[concat('/subscriptions/', subscription().subscriptionId, 
+    '/resourceGroups/', resourceGroup().name , 
+    '/providers/', 'Microsoft.Compute/virtualMachines/')]", 
+  "wadcfgxend": "\"><MetricAggregation scheduledTransferPeriod=\"PT1H\"/>
+    <MetricAggregation scheduledTransferPeriod=\"PT1M\"/>
+    </Metrics></DiagnosticMonitorConfiguration>
+    </WadCfg>"
+},
+
+
+"copy": {
+  "name": "virtualMachineLoop", 
+  "count": "[parameters('numberOfInstances')]"
+},
+
+
+"osDisk": { 
+  "name": "[concat('myOSDisk', copyindex())]",
+  "caching": "ReadWrite", 
+  "createOption": "FromImage" 
+}
+
+"networkInterfaces": [ { 
+  "id": "[resourceId('Microsoft.Network/networkInterfaces',
+    concat('myNIC', copyindex()))]" 
+} ]
+
+"dependsOn": [
+  "[concat('Microsoft.Network/networkInterfaces/', 'myNIC', copyindex())]" 
+],
+
+"networkProfile": { 
+  "networkInterfaces": [ { 
+    "id": "[resourceId('Microsoft.Network/networkInterfaces',
+      concat('myNIC', copyindex())]" 
+  } ] 
+},
+
+"imageReference": { 
+  "publisher": "MicrosoftWindowsServer", 
+  "offer": "WindowsServer", 
+  "sku": "2012-R2-Datacenter", 
+  "version": "latest" 
+},
+
+"osDisk": { 
+  "name": "[concat('myOSDisk', copyindex())]",
+  "caching": "ReadWrite", 
+  "createOption": "FromImage" 
+},
+
+//create vm from existingf managed disk
+
+"osDisk": { 
+  "osType": "Windows",
+  "managedDisk": { 
+    "id": "[resourceId('Microsoft.Compute/disks', [concat('myOSDisk', copyindex())])]" 
+  }, 
+  "caching": "ReadWrite",
+  "createOption": "Attach" 
+},
+
+//Create new virtual machines from a managed image
+
+"storageProfile": { 
+  "imageReference": {
+    "id": "[resourceId('Microsoft.Compute/images', 'myImage')]"
+  },
+  "osDisk": { 
+    "name": "[concat('myOSDisk', copyindex())]",
+    "osType": "Windows",
+    "caching": "ReadWrite", 
+    "createOption": "FromImage" 
+  }
+},
+
+//Attach a data disk
+
+"dataDisks": [
+  {
+    "name": "[concat('myDataDisk', copyindex())]",
+    "diskSizeGB": "100",
+    "lun": 0, 
+    "caching": "ReadWrite",
+    "createOption": "Empty"
+  }
+],
+
+//extensions
+
+{ 
+  "name": "Microsoft.Insights.VMDiagnosticsSettings", 
+  "type": "extensions", 
+  "location": "[resourceGroup().location]", 
+  "apiVersion": "2016-03-30", 
+  "dependsOn": [ 
+    "[concat('Microsoft.Compute/virtualMachines/myVM', copyindex())]" 
+  ], 
+  "properties": { 
+    "publisher": "Microsoft.Azure.Diagnostics", 
+    "type": "IaaSDiagnostics", 
+    "typeHandlerVersion": "1.5", 
+    "autoUpgradeMinorVersion": true, 
+    "settings": { 
+      "xmlCfg": "[base64(concat(variables('wadcfgxstart'), 
+      variables('wadmetricsresourceid'), 
+      concat('myVM', copyindex()),
+      variables('wadcfgxend')))]", 
+      "storageAccount": "[variables('storageName')]" 
+    }, 
+    "protectedSettings": { 
+      "storageAccountName": "[variables('storageName')]", 
+      "storageAccountKey": "[listkeys(variables('accountid'), 
+        '2015-06-15').key1]", 
+      "storageAccountEndPoint": "https://core.windows.net" 
+    } 
+  } 
+},
+
+
+{
+  "name": "MyCustomScriptExtension",
+  "type": "extensions",
+  "apiVersion": "2016-03-30",
+  "location": "[resourceGroup().location]",
+  "dependsOn": [
+    "[concat('Microsoft.Compute/virtualMachines/myVM', copyindex())]"
+  ],
+  "properties": {
+    "publisher": "Microsoft.Compute",
+    "type": "CustomScriptExtension",
+    "typeHandlerVersion": "1.7",
+    "autoUpgradeMinorVersion": true,
+    "settings": {
+      "fileUris": [
+        "[concat('https://', variables('storageName'),
+          '.blob.core.windows.net/customscripts/start.ps1')]" 
+      ],
+      "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File start.ps1"
+    }
+  }
+}
